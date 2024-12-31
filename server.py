@@ -22,39 +22,46 @@ def encrypt_message(message, key):
 def handle_client(client_socket, client_address):
     global online_users
     try:
-        # Receive encrypted message
-        encrypted_message = client_socket.recv(1024)
-        print(f"Server: Received encrypted message from {client_address}: {encrypted_message}")
+        while True:  # Loop to allow multiple requests from the same client
+            encrypted_message = client_socket.recv(1024)
+            if not encrypted_message:
+                print(f"Server: Connection closed by {client_address}")
+                break
 
-        # Decrypt the message
-        decrypted_message = decrypt_message(encrypted_message, KEY3)
-        print(f"Server: Decrypted message from {client_address}: {decrypted_message}")
+            print(f"Server: Received encrypted message from {client_address}: {encrypted_message}")
 
-        # Parse the JSON request
-        request = json.loads(decrypted_message)
-        print(f"Server: Parsed request: {request}")
+            # Decrypt the message
+            decrypted_message = decrypt_message(encrypted_message, KEY3)
+            print(f"Server: Decrypted message from {client_address}: {decrypted_message}")
 
-        # Process the request
-        if request['request'] == 'register':
-            username = request['username']
-            online_users.add(username)
-            print(f"Server: {username} registered. Online users: {online_users}")
-            response = json.dumps({"status": "registered"})
-        elif request['request'] == 'get_online_users':
-            response = json.dumps(list(online_users))
-            print(f"Server: Online users list sent: {response}")
-        else:
-            response = json.dumps({"error": "Unknown request"})
+            # Parse the JSON request
+            request = json.loads(decrypted_message)
+            print(f"Server: Parsed request: {request}")
 
-        # Encrypt the response
-        encrypted_response = encrypt_message(response, KEY3)
-        print("Server: Encrypted response sent:", encrypted_response)
-        client_socket.sendall(encrypted_response)
+            # Process the request
+            if request['request'] == 'register':
+                username = request['username']
+                online_users.add(username)
+                print(f"Server: {username} registered. Online users: {online_users}")
+                response = json.dumps({"status": "registered"})
+            elif request['request'] == 'get_online_users':
+                response = json.dumps(list(online_users))
+                print(f"Server: Online users list sent: {response}")
+            else:
+                response = json.dumps({"error": "Unknown request"})
+
+            # Encrypt the response
+            encrypted_response = encrypt_message(response, KEY3)
+            print("Server: Encrypted response sent:", encrypted_response)
+            client_socket.sendall(encrypted_response)
 
     except Exception as e:
         print(f"Server: Error occurred while handling {client_address}: {e}")
     finally:
         client_socket.close()
+
+
+
 
 def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:

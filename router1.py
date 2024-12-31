@@ -1,4 +1,3 @@
-# router1.py
 from Crypto.Cipher import AES
 import socket
 import threading
@@ -12,7 +11,6 @@ def encrypt_message(message, key):
     # Combine nonce and ciphertext for transmission
     return nonce + ciphertext
 
-
 def decrypt_message(encrypted_message, key):
     nonce = encrypted_message[:16]  # Extract the nonce (first 16 bytes)
     ciphertext = encrypted_message[16:]  # Remaining is the ciphertext
@@ -21,24 +19,29 @@ def decrypt_message(encrypted_message, key):
 
 def handle_client(client_socket):
     try:
-        # Receive encrypted message
-        message = client_socket.recv(1024)
-        print("Router1: Received encrypted message:", message)
+        while True:  # Loop to handle multiple requests
+            # Receive encrypted message
+            message = client_socket.recv(1024)
+            if not message:  # Break if the connection is closed
+                print("Router1: Connection closed by client.")
+                break
 
-        # Decrypt the message
-        decrypted_message = decrypt_message(message, KEY1)
-        print("Router1: Decrypted message:", decrypted_message)
+            print("Router1: Received encrypted message:", message)
 
-        # Forward to router2
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as router_socket:
-            router_socket.connect(('localhost', 5002))
-            router_socket.sendall(bytes.fromhex(decrypted_message))
-            response = router_socket.recv(1024)
+            # Decrypt the message
+            decrypted_message = decrypt_message(message, KEY1)
+            print("Router1: Decrypted message:", decrypted_message)
 
-        # Encrypt the response
-        encrypted_response = encrypt_message(response.hex(), KEY1)
-        print("Router1: Encrypted response:", encrypted_response)
-        client_socket.sendall(encrypted_response)
+            # Forward to router2
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as router_socket:
+                router_socket.connect(('localhost', 5002))
+                router_socket.sendall(bytes.fromhex(decrypted_message))
+                response = router_socket.recv(1024)
+
+            # Encrypt the response
+            encrypted_response = encrypt_message(response.hex(), KEY1)
+            print("Router1: Encrypted response:", encrypted_response)
+            client_socket.sendall(encrypted_response)
 
     except Exception as e:
         print(f"Router1: Error occurred: {e}")

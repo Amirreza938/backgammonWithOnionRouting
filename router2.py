@@ -1,4 +1,3 @@
-# router2.py
 from Crypto.Cipher import AES
 import socket
 import threading
@@ -19,30 +18,35 @@ def encrypt_message(message, key):
 
 def handle_client(client_socket):
     try:
-        # Receive encrypted message
-        message = client_socket.recv(1024)
-        print("Router2: Received encrypted message:", message)
+        while True:  # Loop to handle multiple requests
+            # Receive encrypted message
+            message = client_socket.recv(1024)
+            if not message:  # Break if the connection is closed
+                print("Router2: Connection closed by client.")
+                break
 
-        # Decrypt the message
-        decrypted_message = decrypt_message(message, KEY2)
-        print("Router2: Decrypted message:", decrypted_message)
+            print("Router2: Received encrypted message:", message)
 
-        # Ensure the decrypted message is valid hex
-        if not all(c in '0123456789abcdefABCDEF' for c in decrypted_message):
-            raise ValueError(f"Decrypted message is not hex-encoded: {decrypted_message}")
+            # Decrypt the message
+            decrypted_message = decrypt_message(message, KEY2)
+            print("Router2: Decrypted message:", decrypted_message)
 
-        # Forward to Router3
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as router_socket:
-            print("Router2: Connecting to Router3...")
-            router_socket.connect(('localhost', 5003))  # Ensure this port matches Router3
-            router_socket.sendall(bytes.fromhex(decrypted_message))
-            response = router_socket.recv(1024)
-            print("Router2: Received response from Router3:", response)
+            # Ensure the decrypted message is valid hex
+            if not all(c in '0123456789abcdefABCDEF' for c in decrypted_message):
+                raise ValueError(f"Decrypted message is not hex-encoded: {decrypted_message}")
 
-        # Encrypt the response
-        encrypted_response = encrypt_message(response.hex(), KEY2)
-        print("Router2: Encrypted response:", encrypted_response)
-        client_socket.sendall(encrypted_response)
+            # Forward to Router3
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as router_socket:
+                print("Router2: Connecting to Router3...")
+                router_socket.connect(('localhost', 5003))  # Ensure this port matches Router3
+                router_socket.sendall(bytes.fromhex(decrypted_message))
+                response = router_socket.recv(1024)
+                print("Router2: Received response from Router3:", response)
+
+            # Encrypt the response
+            encrypted_response = encrypt_message(response.hex(), KEY2)
+            print("Router2: Encrypted response:", encrypted_response)
+            client_socket.sendall(encrypted_response)
 
     except Exception as e:
         print(f"Router2: Error occurred: {e}")
