@@ -3,7 +3,7 @@ from Crypto.Cipher import AES
 import socket
 import json
 import threading
-
+import random
 KEY3 = b'3456789012345678'
 online_users = set()
 
@@ -22,37 +22,28 @@ def encrypt_message(message, key):
 def handle_client(client_socket, client_address):
     global online_users
     try:
-        while True:  # Loop to allow multiple requests from the same client
+        while True:
             encrypted_message = client_socket.recv(1024)
             if not encrypted_message:
                 print(f"Server: Connection closed by {client_address}")
                 break
 
-            print(f"Server: Received encrypted message from {client_address}: {encrypted_message}")
-
-            # Decrypt the message
             decrypted_message = decrypt_message(encrypted_message, KEY3)
-            print(f"Server: Decrypted message from {client_address}: {decrypted_message}")
-
-            # Parse the JSON request
             request = json.loads(decrypted_message)
-            print(f"Server: Parsed request: {request}")
 
-            # Process the request
             if request['request'] == 'register':
                 username = request['username']
                 online_users.add(username)
-                print(f"Server: {username} registered. Online users: {online_users}")
                 response = json.dumps({"status": "registered"})
             elif request['request'] == 'get_online_users':
                 response = json.dumps(list(online_users))
-                print(f"Server: Online users list sent: {response}")
+            elif request['request'] == 'get_dice':  # Handle dice request
+                dice1, dice2 = random.randint(1, 6), random.randint(1, 6)
+                response = json.dumps({"dice1": dice1, "dice2": dice2})
             else:
                 response = json.dumps({"error": "Unknown request"})
 
-            # Encrypt the response
             encrypted_response = encrypt_message(response, KEY3)
-            print("Server: Encrypted response sent:", encrypted_response)
             client_socket.sendall(encrypted_response)
 
     except Exception as e:
