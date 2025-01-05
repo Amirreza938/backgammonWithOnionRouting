@@ -27,6 +27,14 @@ def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
         client_socket.connect(('localhost', 5001))
 
+        # First handshake: Send the key
+        client_socket.sendall(KEY1)
+        response = client_socket.recv(1024)
+        if response != b"Key received. Handshake complete.":
+            print("Handshake failed. Exiting...")
+            return
+        print("Handshake successful. Key stored in router1.")
+
         # Register username
         register_message = json.dumps({'request': 'register', 'username': username})
         encrypted_message = encrypt_message(register_message, KEY3)
@@ -62,7 +70,6 @@ def main():
                 response = decrypt_message(bytes.fromhex(response), KEY3)
                 print("Online users:", response)
 
-
             elif option == '2':  # Roll dice
                 # Request dice numbers
                 dice_message = json.dumps({'request': 'get_dice'})
@@ -77,13 +84,11 @@ def main():
                 response = decrypt_message(bytes.fromhex(response), KEY3)
                 print("Dice roll:", response)
 
-
             elif option == '3':
                 print("Exiting client...")
                 break
-            else:   
+            else:
                 print("Invalid option")
-
 
 if __name__ == "__main__":
     main()

@@ -2,7 +2,8 @@ from Crypto.Cipher import AES
 import socket
 import threading
 
-KEY1 = b'1234567890123456'
+# Global variable to store the key after the first handshake
+stored_key = None
 
 def encrypt_message(message, key):
     cipher = AES.new(key, AES.MODE_EAX)
@@ -18,8 +19,24 @@ def decrypt_message(encrypted_message, key):
     return cipher.decrypt(ciphertext).decode()
 
 def handle_client(client_socket):
+    global stored_key
+
     try:
-        while True:  # Loop to handle multiple requests
+        # First message is the key handshake
+        key_message = client_socket.recv(1024)
+        if not key_message:
+            print("Router1: Connection closed by client during key handshake.")
+            return
+
+        # Decode the key (assuming it's sent as plaintext for simplicity)
+        stored_key = key_message  # Store the key globally
+        print(f"Router1: Key received and stored: {stored_key}")
+
+        # Acknowledge the key handshake
+        client_socket.sendall(b"Key received. Handshake complete.")
+
+        # Now handle subsequent requests
+        while True:
             # Receive encrypted message
             message = client_socket.recv(1024)
             if not message:  # Break if the connection is closed
@@ -28,8 +45,8 @@ def handle_client(client_socket):
 
             print("Router1: Received encrypted message:", message)
 
-            # Decrypt the message
-            decrypted_message = decrypt_message(message, KEY1)
+            # Decrypt the message using the stored key
+            decrypted_message = decrypt_message(message, stored_key)
             print("Router1: Decrypted message:", decrypted_message)
 
             # Forward to router2
@@ -38,8 +55,8 @@ def handle_client(client_socket):
                 router_socket.sendall(bytes.fromhex(decrypted_message))
                 response = router_socket.recv(1024)
 
-            # Encrypt the response
-            encrypted_response = encrypt_message(response.hex(), KEY1)
+            # Encrypt the response using the stored key
+            encrypted_response = encrypt_message(response.hex(), stored_key)
             print("Router1: Encrypted response:", encrypted_response)
             client_socket.sendall(encrypted_response)
 
