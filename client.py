@@ -21,6 +21,91 @@ def decrypt_message(encrypted_message, key):
     cipher = AES.new(key, AES.MODE_EAX, nonce=nonce)
     return cipher.decrypt(ciphertext).decode()
 
+def register():
+    username = input("Enter your username: ")
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+        client_socket.connect(('localhost', 5001))
+
+        # First handshake: Send the key
+        client_socket.sendall(KEY1)
+        response = client_socket.recv(1024)
+        if response != b"Key received. Handshake complete.":
+            print("Handshake failed. Exiting...")
+            return
+        print("Handshake successful. Key stored in router1.")
+
+        # Register username
+        register_message = json.dumps({'request': 'register', 'username': username})
+        encrypted_message = encrypt_message(register_message, KEY3)
+        encrypted_message = encrypt_message(encrypted_message.hex(), KEY2)
+        encrypted_message = encrypt_message(encrypted_message.hex(), KEY1)
+        client_socket.sendall(encrypted_message)
+
+        response = client_socket.recv(1024)
+        response = decrypt_message(response, KEY1)
+        response = decrypt_message(bytes.fromhex(response), KEY2)
+        response = decrypt_message(bytes.fromhex(response), KEY3)
+        register_message = json.loads(response)
+        if register_message['status'] == 'registered':
+            print("Server response:", response)
+            return username
+        else:
+            print("Server response:", response)
+            return None
+
+def get_online_users():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+        client_socket.connect(('localhost', 5001))
+
+        # First handshake: Send the key
+        client_socket.sendall(KEY1)
+        response = client_socket.recv(1024)
+        if response != b"Key received. Handshake complete.":
+            print("Handshake failed. Exiting...")
+            return
+        print("Handshake successful. Key stored in router1.")
+
+        # Get online users
+        request_message = json.dumps({'request': 'get_online_users'})
+        encrypted_message = encrypt_message(request_message, KEY3)
+        encrypted_message = encrypt_message(encrypted_message.hex(), KEY2)
+        encrypted_message = encrypt_message(encrypted_message.hex(), KEY1)
+        client_socket.sendall(encrypted_message)
+
+        response = client_socket.recv(1024)
+        response = decrypt_message(response, KEY1)
+        response = decrypt_message(bytes.fromhex(response), KEY2)
+        response = decrypt_message(bytes.fromhex(response), KEY3)
+        print("Online users:", response)
+        return json.loads(response)
+
+def roll_dice():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+        client_socket.connect(('localhost', 5001))
+
+        # First handshake: Send the key
+        client_socket.sendall(KEY1)
+        response = client_socket.recv(1024)
+        if response != b"Key received. Handshake complete.":
+            print("Handshake failed. Exiting...")
+            return
+        print("Handshake successful. Key stored in router1.")
+
+        # Request dice numbers
+        dice_message = json.dumps({'request': 'get_dice'})
+        encrypted_message = encrypt_message(dice_message, KEY3)
+        encrypted_message = encrypt_message(encrypted_message.hex(), KEY2)
+        encrypted_message = encrypt_message(encrypted_message.hex(), KEY1)
+        client_socket.sendall(encrypted_message)
+
+        response = client_socket.recv(1024)
+        response = decrypt_message(response, KEY1)
+        response = decrypt_message(bytes.fromhex(response), KEY2)
+        response = decrypt_message(bytes.fromhex(response), KEY3)
+        print("Dice roll:", response)
+        return json.loads(response)
+        
 def main():
     username = input("Enter your username: ")
 

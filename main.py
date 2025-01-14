@@ -3,6 +3,7 @@ import threading
 from tkinter import Tk, Text, Entry, Button, Scrollbar, END
 from game import BackgammonGame
 from network import host_game, connect_to_game
+import client
 
 def setup_chat_interface(conn, player_name, opponent_name):
     def send_message():
@@ -45,29 +46,6 @@ def setup_chat_interface(conn, player_name, opponent_name):
     return root
 
 def main():
-    choice = input("Do you want to (h)ost or (c)onnect to a game? ").lower()
-    is_host = choice == 'h'
-
-    player_name = input("Enter your name: ")
-    if is_host:
-        conn, server = host_game()
-        game = BackgammonGame(True)
-        opponent_name = conn.recv(1024).decode()
-        conn.send(player_name.encode())
-    else:
-        conn = connect_to_game()
-        game = BackgammonGame(False)
-        conn.send(player_name.encode())
-        opponent_name = conn.recv(1024).decode()
-
-    print("\nWelcome to Backgammon!")
-    print("You are", "White" if game.is_white else "Black")
-
-    global incoming_messages
-    incoming_messages = []  # Buffer for incoming game messages
-
-    chat_root = setup_chat_interface(conn, player_name, opponent_name)
-
     def game_loop():
         while True:
             game.board.draw()
@@ -123,8 +101,68 @@ def main():
                     if not game.make_move(start, end, not game.is_white):
                         print("Invalid move received from opponent!")
 
-    threading.Thread(target=game_loop, daemon=True).start()
-    chat_root.mainloop()
+    while True:
+        username = client.register()
+        if username is not None:
+            break
+    global incoming_messages
+    while True:
+         # Request online users
+            print("\nChoose an option:")
+            print("1. Get online users")
+            print("2. Play game")
+            print("3. Exit")
+            option = input("Enter your option(1/2/3): ")
+            
+            if option == '1':
+                client.get_online_users()
+            elif option == '2':
+                choice = input("Do you want to (h)ost or (c)onnect to a game? ").lower()
+                is_host = choice == 'h'
+                if is_host:
+                    conn, server = host_game()
+                    game = BackgammonGame(True)
+                    opponent_name = conn.recv(1024).decode()
+                    # conn.send(player_name.encode())
+                    accepting = input(f"Do you want to play against {opponent_name}? (y/n)")
+                    if accepting.lower() == 'y':
+                        conn.send("ACCEPT".encode())
+                        print("\nWelcome to Backgammon!")
+                        print("You are", "White" if game.is_white else "Black")
+
+                        
+                        incoming_messages = []  # Buffer for incoming game messages
+
+                        chat_root = setup_chat_interface(conn, username, opponent_name)
+                        threading.Thread(target=game_loop, daemon=True).start()
+                        chat_root.mainloop()
+                    else:
+                        conn.send("DECLINE".encode())
+                else:
+                    online_users = client.get_online_users()
+                    opponent_name = input("Enter opponent's name: ")
+                    if opponent_name not in online_users or opponent_name == username:
+                        print("Invalid opponent name")
+                        continue
+                    conn = connect_to_game()
+                    game = BackgammonGame(False)
+                    conn.send(username.encode())
+                    message = conn.recv(1024).decode()
+                    if message == "ACCEPT":
+                        print("\nWelcome to Backgammon!")
+                        print("You are", "White" if game.is_white else "Black")
+
+                        incoming_messages = []  # Buffer for incoming game messages
+
+                        chat_root = setup_chat_interface(conn, username, opponent_name)
+                        threading.Thread(target=game_loop, daemon=True).start()
+                        chat_root.mainloop()
+                    else:
+                        continue
+            elif option == '3':
+                break
+            else:
+                print("Invalid option")
 
 if __name__ == "__main__":
     try:
