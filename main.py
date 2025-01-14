@@ -52,7 +52,7 @@ def main():
 
             if game.current_turn == game.is_white:
                 # Your turn
-                dice = game.roll_dice()
+                dice = list(client.roll_dice().values())
                 print(f"You rolled: {dice[0]}, {dice[1]}")
 
                 valid_moves = game.get_valid_moves(dice, game.is_white)
@@ -107,7 +107,6 @@ def main():
             break
     global incoming_messages
     while True:
-         # Request online users
             print("\nChoose an option:")
             print("1. Get online users")
             print("2. Play game")
