@@ -4,6 +4,7 @@ import socket
 import json
 import threading
 import random
+import re
 KEY3 = b'3456789012345678'
 online_users = set()
 
@@ -21,6 +22,7 @@ def encrypt_message(message, key):
 
 def handle_client(client_socket, client_address):
     global online_users
+    username = None
     try:
         while True:
             encrypted_message = client_socket.recv(1024)
@@ -33,8 +35,12 @@ def handle_client(client_socket, client_address):
 
             if request['request'] == 'register':
                 username = request['username']
-                online_users.add(username)
-                response = json.dumps({"status": "registered"})
+                pattern = r'^[a-zA-Z0-9]+$'
+                if not re.match(pattern, username):
+                    response = json.dumps({"status": "Invalid username"})
+                else:
+                    online_users.add(username)
+                    response = json.dumps({"status": "registered"})
             elif request['request'] == 'get_online_users':
                 response = json.dumps(list(online_users))
             elif request['request'] == 'get_dice':  # Handle dice request
@@ -49,6 +55,8 @@ def handle_client(client_socket, client_address):
     except Exception as e:
         print(f"Server: Error occurred while handling {client_address}: {e}")
     finally:
+        # if username:
+        #     online_users.remove(username)
         client_socket.close()
 
 
